@@ -1,5 +1,5 @@
 /* M7+ 地震マップ — Service Worker（オフラインで開けるようにアプリ一式をキャッシュする） */
-const VERSION = 'm7map-76dc84d63b';
+const VERSION = 'm7map-c9cd21c004';
 const CORE = [
   './', './index.html', './app.css', './app.js', './manifest.webmanifest',
   './vendor/d3.min.js', './vendor/topojson-client.min.js',
@@ -33,13 +33,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   if (url.origin !== self.location.origin) return;
-  // 画面（HTML）はネット優先・失敗したらキャッシュ。それ以外はキャッシュ優先
+  // 画面（HTML）もキャッシュから出して、HTML と JS の版を必ずそろえる。
+  // 新しい版は sw.js の更新で裏で入り、入れ替わった時点で app.js が1回だけ読み込み直す
   if (req.mode === 'navigate') {
-    event.respondWith(fetch(req).then((res) => {
-      const copy = res.clone();
-      caches.open(VERSION).then((c) => c.put('./index.html', copy));
-      return res;
-    }).catch(() => caches.match('./index.html')));
+    event.respondWith(caches.open(VERSION).then((c) => c.match('./index.html')).then((hit) => hit || fetch(req)));
     return;
   }
   event.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req).then((res) => {

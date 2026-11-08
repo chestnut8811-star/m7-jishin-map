@@ -148,6 +148,29 @@ svg { display: block; }
 }
 .chip-toggle[aria-pressed="true"] { background: var(--a4); color: var(--on-a4); }
 
+/* 最大震度の選択（地図・ランキング・年表で共通） */
+.chip-select {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; flex: none; height: 38px;
+  padding: 0 32px 0 13px; border-radius: 999px; background: var(--surface-2); color: var(--ink);
+  font-size: 13px; font-weight: 800; white-space: nowrap;
+}
+.chip-select select {
+  appearance: none; -webkit-appearance: none; border: 0; background: transparent; font: inherit; color: inherit;
+  padding: 0; height: 100%; cursor: pointer; outline-offset: 4px;
+}
+.chip-select::after {
+  content: ""; position: absolute; right: 14px; top: 50%; width: 7px; height: 7px; pointer-events: none;
+  border-right: 2.5px solid currentColor; border-bottom: 2.5px solid currentColor; transform: translateY(-70%) rotate(45deg);
+}
+.chip-select[data-active="true"] { background: var(--a2); color: var(--on-a2); }
+.chip-select-wide { display: flex; justify-content: space-between; width: 100%; }
+.chip-select-wide select { text-align: right; }
+.map-top .chip-select { background: var(--glass); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: var(--shadow); }
+.map-top .chip-select[data-active="true"] { background: var(--a2); color: var(--on-a2); }
+.region-row .chip-select { height: 32px; font-size: 12.5px; padding: 0 28px 0 12px; }
+.region-row .chip-select::after { right: 12px; }
+.legend-filter { font-weight: 800; color: var(--on-a2); background: var(--a2); border-radius: 6px; padding: 2px 6px; white-space: normal; }
+
 /* ------------------------------------------------------------------ map */
 .view-map { overflow: hidden; }
 .map-stage { position: absolute; inset: 0; background: var(--sea); }
@@ -360,7 +383,8 @@ details.next-basis p { margin-top: 6px; }
 .search svg { width: 20px; height: 20px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; flex: none; }
 .search input { border: 0; outline: 0; background: transparent; padding: 12px 0; width: 100%; min-width: 0; font-size: 16px; }
 .list-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.list-filters select { flex: 1; min-width: 120px; padding: 8px 12px; border-radius: 999px; border: 0; background: var(--surface-2); font-weight: 700; font-size: 13px; }
+.list-filters > select { flex: 1; min-width: 120px; padding: 8px 12px; border-radius: 999px; border: 0; background: var(--surface-2); font-weight: 700; font-size: 13px; }
+.list-filters .chip-select { flex: 1; min-width: 150px; justify-content: space-between; }
 .quake-list { display: grid; gap: 4px; }
 .era-head {
   position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: baseline;

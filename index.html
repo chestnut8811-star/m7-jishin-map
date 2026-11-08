@@ -56,7 +56,7 @@
               <button type="button" data-val="8" role="radio">8+</button>
             </div>
           </div>
-          <div class="chip-row region-row" role="toolbar" aria-label="地域へ移動" id="regionRow"></div>
+          <div class="chip-row region-row" role="toolbar" aria-label="震度の絞り込みと地域への移動" id="regionRow"><label class="chip-select"><select class="int-select" aria-label="最大震度で絞り込み"></select></label></div>
         </div>
         <div class="map-zoom">
           <button type="button" id="platesToggle" class="is-toggle" aria-pressed="true" aria-label="プレート境界と海溝名を表示">
@@ -102,6 +102,7 @@
             <button type="button" data-val="1919" role="radio">1919年〜</button>
             <button type="button" data-val="2000" role="radio">2000年〜</button>
           </div>
+          <label class="chip-select chip-select-wide"><span>最大震度</span><select class="int-select" aria-label="最大震度で絞り込み"></select></label>
         </div>
         <div class="podium" id="podium"></div>
         <ol class="rank-list" id="rankList"></ol>
@@ -144,8 +145,10 @@
               <button type="button" data-val="new" role="radio">新しい順</button>
               <button type="button" data-val="old" role="radio">古い順</button>
               <button type="button" data-val="big" role="radio">規模順</button>
+              <button type="button" data-val="int" role="radio">震度順</button>
             </div>
             <select id="listPref" aria-label="都道府県で絞り込み"></select>
+            <label class="chip-select"><select class="int-select" aria-label="最大震度で絞り込み"></select></label>
           </div>
         </div>
         <div class="quake-list" id="quakeList"></div>
@@ -183,6 +186,8 @@
           <dd>震央がある都道府県に1回。海の地震は、震央にいちばん近い陸地の都道府県に数えます（気象庁の震央地名の県と異なることがあります）。</dd>
           <dt>影響圏の回数</dt>
           <dd>1919年以降は、震度5弱以上（1996年までの旧震度階では震度5以上）を観測した都道府県すべてに1回。1918年以前は観測がないため、震央から「100km＋推定した断層の長さの半分」以内に陸地がある都道府県に1回と推定します。断層の長さは宇津・関の式 log L = 0.5M − 1.8 で見積もり（M7で約50km、M8で約160km、M9で約500km）、推定に使う半径はM7で約125km、M8で約180km、M9で約350kmです。</dd>
+          <dt>最大震度での絞り込み・並べ替え</dt>
+          <dd>気象庁の地震（1919年以降）の最大震度を使います。1996年までの旧震度階の震度5は「5弱以上」に、震度6は「6弱以上」に含め、「6強以上」には含めません。1918年以前の地震は震度の記録がないため、震度で絞り込むと表示されず、震度順では最後に並びます。</dd>
           <dt>マグニチュード</dt>
           <dd>1919年以降は気象庁の値（2011年東北地方太平洋沖地震のM9.0はモーメントマグニチュード）。それより前は史料に残る被害の広がりから推定した値で、計器で観測した値より不確かです。</dd>
           <dt>除外した記録</dt>

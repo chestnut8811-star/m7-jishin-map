@@ -31,6 +31,7 @@
     tab: 'map',
     fill: 'epi',
     minM: 7,
+    minI: '',          // 最大震度の下限（'' すべて / A 5弱以上 / C 6弱以上 / D 6強以上 / 7）
     plates: true,
     yearTo: YEAR_MAX,
     period: 599,
@@ -132,8 +133,14 @@
   }
 
   // ------------------------------------------------------------ filters / aggregation
-  const mapList = () => QUAKES.filter((q) => q.m >= state.minM - 1e-9 && q.y <= state.yearTo);
-  const rankList = () => QUAKES.filter((q) => q.m >= state.minM - 1e-9 && q.y >= state.period);
+  // 最大震度の絞り込み。旧震度階（1996年まで）の震度5は5弱以上に、震度6は6弱以上に含める（6強以上には含めない）
+  const INT_FILTERS = [['', '震度：すべて'], ['A', '震度5弱以上'], ['C', '震度6弱以上'], ['D', '震度6強以上'], ['7', '震度7']];
+  const intCode = (q) => (q.mi && MAXI_CODE[q.mi]) || null;
+  const intIdx = (q) => (intCode(q) ? INT_ORDER.indexOf(intCode(q)) : -1);
+  const passI = (q) => !state.minI || intIdx(q) >= INT_ORDER.indexOf(state.minI);
+  const intLabel = () => (INT_FILTERS.find(([v]) => v === state.minI) || INT_FILTERS[0])[1];
+  const mapList = () => QUAKES.filter((q) => q.m >= state.minM - 1e-9 && q.y <= state.yearTo && passI(q));
+  const rankList = () => QUAKES.filter((q) => q.m >= state.minM - 1e-9 && q.y >= state.period && passI(q));
   function countBy(list, metric) {
     const c = new Map();
     for (const q of list) {
@@ -193,6 +200,16 @@
       const v = String(state[seg.dataset.bind]);
       seg.querySelectorAll('button[data-val]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.val === v)));
     });
+    document.querySelectorAll('select.int-select').forEach((sel) => {
+      sel.value = state.minI;
+      sel.closest('.chip-select')?.setAttribute('data-active', String(!!state.minI));
+    });
+  }
+  function bindIntSelects() {
+    document.querySelectorAll('select.int-select').forEach((sel) => {
+      sel.innerHTML = INT_FILTERS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+      sel.addEventListener('change', () => { state.minI = sel.value; renderAll(); });
+    });
   }
 
   // ------------------------------------------------------------ MAP
@@ -246,7 +263,7 @@
     });
 
     const row = $('#regionRow');
-    row.innerHTML = REGION_BOX.map(([n]) => `<button type="button" data-region="${esc(n)}" aria-pressed="${n === '全国'}">${esc(n)}</button>`).join('');
+    row.insertAdjacentHTML('beforeend', REGION_BOX.map(([n]) => `<button type="button" data-region="${esc(n)}" aria-pressed="${n === '全国'}">${esc(n)}</button>`).join(''));
     row.addEventListener('click', (ev) => {
       const b = ev.target.closest('button[data-region]');
       if (b) zoomToRegion(b.dataset.region, true);
@@ -363,7 +380,8 @@
     const swatches = heat.labels.map((l, i) => `<span><i style="background:${heat.used[i]}"></i>${l}</span>`).join('');
     $('#mapLegend').innerHTML = `<div class="legend-dots"><span class="legend-key">円＝震央</span>${dots}</div>
       <div class="legend-key">${label}（回）</div>
-      <div class="legend-heat">${heat.labels.length ? swatches : '<span>なし</span>'}</div>`;
+      <div class="legend-heat">${heat.labels.length ? swatches : '<span>なし</span>'}</div>
+      ${state.minI ? `<div class="legend-filter">${intLabel()}の地震だけ（震度の記録がある1919年以降）</div>` : ''}`;
   }
 
   function zoomToRegion(name, animate) {
@@ -498,7 +516,7 @@
     const periodTxt = state.period === 599 ? '全期間（599年〜）' : `${state.period}年〜2026年`;
     const mTxt = `M${state.minM.toFixed(1)}以上`;
     const metricTxt = { epi: '震央の数', near: '影響圏に入った回数', maxm: '震央で起きた最大の地震' }[metric];
-    $('#rankLead').textContent = `${periodTxt}・${mTxt}・${metricTxt}`;
+    $('#rankLead').textContent = `${periodTxt}・${mTxt}${state.minI ? '・' + intLabel() : ''}・${metricTxt}`;
     const unit = metric === 'maxm' ? '' : '回';
     const valTxt = (r) => (metric === 'maxm' ? (r.v ? fmtM(r.v) : '—') : String(r.v));
     const top = rows.slice(0, 3);
@@ -532,7 +550,7 @@
       near: '1919年以降は震度5弱以上（1996年までの旧震度階では震度5以上）を観測した都道府県、1918年以前は震央からの距離（100km＋推定した断層の長さの半分）で推定した都道府県に、それぞれ1回と数えます。',
       maxm: '震央がその都道府県（海の地震はいちばん近い陸地の都道府県）にある地震のうち、最も大きいもの。',
     };
-    $('#rankNote').textContent = notes[metric] + (state.period < 1868 ? ' 古い時代は記録の残り方に地域差があります。' : '');
+    $('#rankNote').textContent = notes[metric] + (state.minI ? ' 最大震度で絞り込むと、震度の記録がある1919年以降の地震だけになります。' : (state.period < 1868 ? ' 古い時代は記録の残り方に地域差があります。' : ''));
   }
 
   // ------------------------------------------------------------ OUTLOOK
@@ -686,7 +704,7 @@
     svg.append('g').attr('class', 'axis').attr('transform', `translate(${m.l},0)`)
       .call(d3.axisLeft(y).tickValues([7, 7.5, 8, 8.5, 9]).tickFormat((v) => 'M' + v).tickSize(0))
       .call((g) => g.select('.domain').remove());
-    const pts = [...QUAKES].sort((a, b) => a.m - b.m);
+    const pts = QUAKES.filter(passI).sort((a, b) => a.m - b.m);
     svg.append('g').selectAll('circle').data(pts).join('circle')
       .attr('class', 'dot').attr('cx', (q) => x(q.y)).attr('cy', (q) => y(q.m)).attr('r', (q) => 2.6 + (q.m - 7) * 1.6)
       .attr('fill', (q) => dotColor(q.m))
@@ -696,6 +714,7 @@
   function renderList() {
     const qtxt = state.listQuery.trim();
     let list = QUAKES.filter((q) => {
+      if (!passI(q)) return false;
       if (state.listPref && !(q.p === state.listPref || q.nr.includes(state.listPref))) return false;
       if (!qtxt) return true;
       const hay = `${q.n} ${q.a} ${q.e} ${prefName(q.p)} ${q.y}`;
@@ -703,13 +722,24 @@
     });
     if (state.listSort === 'new') list.sort((a, b) => b.idx - a.idx);
     else if (state.listSort === 'old') list.sort((a, b) => a.idx - b.idx);
-    else list.sort((a, b) => b.m - a.m || b.idx - a.idx);
-    $('#listLead').textContent = `${QUAKES.length}件のうち${list.length}件を表示。円をタップすると詳しく見られます。`;
-    if (!list.length) { $('#quakeList').innerHTML = '<p class="empty">条件に合う地震はありません。検索語や都道府県を変えてください。</p>'; return; }
+    else if (state.listSort === 'big') list.sort((a, b) => b.m - a.m || b.idx - a.idx);
+    else list.sort((a, b) => intIdx(b) - intIdx(a) || b.m - a.m || b.idx - a.idx);   // 震度順（記録なしは最後）
+    $('#listLead').textContent = `${QUAKES.length}件のうち${list.length}件を表示。` +
+      (state.minI ? `${intLabel()}で絞り込み中（震度の記録がある1919年以降の地震だけ）。` : '円をタップすると詳しく見られます。');
+    if (!list.length) { $('#quakeList').innerHTML = '<p class="empty">条件に合う地震はありません。検索語・都道府県・最大震度を変えてください。</p>'; return; }
     let html = '';
     let curEra = null;
+    let curInt;
+    const intHead = (code) => (code ? INT[code][0] + (code === '5' || code === '6' ? '（1996年までの旧震度階）' : '') : '震度の記録なし（1918年以前など）');
     for (const q of list) {
-      if (state.listSort !== 'big') {
+      if (state.listSort === 'int') {
+        const code = intCode(q);
+        if (code !== curInt) {
+          curInt = code;
+          const n = list.filter((x) => intCode(x) === code).length;
+          html += `<div class="era-head">${intHead(code)}<span>${n}件</span></div>`;
+        }
+      } else if (state.listSort !== 'big') {
         const era = eraOf(q.y);
         if (era !== curEra) {
           curEra = era;
@@ -858,7 +888,7 @@
   }
 
   function prefSummary(code) {
-    const all = QUAKES.filter((q) => q.m >= state.minM - 1e-9);
+    const all = QUAKES.filter((q) => q.m >= state.minM - 1e-9 && passI(q));
     const epi = all.filter((q) => q.p === code);
     const near = all.filter((q) => q.nr.includes(code));
     const rankOf = (metric) => {
@@ -880,7 +910,7 @@
         <span class="q-mag" style="${magStyle(q.m)}">${q.m.toFixed(1)}</span>
         <span class="q-main"><span class="q-name">${esc(qTitle(q))}</span><span class="q-sub">${dateDot(q)}${q.p === code ? '・震央' : ''}</span></span><span></span></button>`).join('');
     openSheet(`
-      <div class="eq-head"><div class="eq-kicker"><span class="tag">${esc(p.r)}</span><span class="tag">M${state.minM.toFixed(1)}以上・全期間</span></div>
+      <div class="eq-head"><div class="eq-kicker"><span class="tag">${esc(p.r)}</span><span class="tag">M${state.minM.toFixed(1)}以上・全期間${state.minI ? '・' + intLabel() : ''}</span></div>
         <h2 class="eq-title" id="sheetTitle">${esc(p.n)}</h2></div>
       <div class="stat-grid">
         <div class="stat"><b>${s.epi.length}<small style="font-size:12px">回</small></b><span>震央の数（全国${s.rEpi ?? '–'}位）</span></div>
@@ -1067,6 +1097,7 @@
   function boot() {
     applyTheme();
     bindSegs();
+    bindIntSelects();
     initList();
     initTime();
     const sub = `${QUAKES[0]?.y ?? 599}年〜${YEAR_MAX}年・${QUAKES.length}件`;
