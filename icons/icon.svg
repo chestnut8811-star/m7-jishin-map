@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title description">
+  <title id="title">M7+ 地震マップ</title>
+  <desc id="description">青い背景に、震央から広がる赤と黄色の波紋と太い白の地震計波形を重ねたオリジナルのシンボル。</desc>
+  <rect width="1024" height="1024" fill="#1A5FE8"/>
+  <!-- Two concentric ripples share the same epicenter. -->
+  <g fill="none">
+    <circle cx="512" cy="512" r="316" stroke="#D91E2A" stroke-width="80"/>
+    <circle cx="512" cy="512" r="188" stroke="#FFC400" stroke-width="72"/>
+    <!-- The background-colored clearance keeps the waveform legible at 32 px. -->
+    <path d="M158 548H316L386 438L468 660L556 348L642 548H866"
+          stroke="#1A5FE8" stroke-width="136" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M158 548H316L386 438L468 660L556 348L642 548H866"
+          stroke="#FFFFFF" stroke-width="76" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="ja" data-palette="blue">
+<head>
+<meta charset="utf-8">
+<title>M7+ 地震マップ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="日本で起きたM7以上の地震（599年〜）を、地図・都道府県ランキング・次の大地震の見通しで見るアプリ">
+<meta name="theme-color" content="#1A5FE8">
+<meta name="color-scheme" content="light dark">
+<!--PWA-HEAD-START-->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="M7マップ">
+<!--PWA-HEAD-END-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&amp;display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header class="appbar">
+    <div class="brand">
+      <img class="brand-icon" src="icons/icon.svg" alt="" width="40" height="40">
+      <div class="brand-text">
+        <h1 class="brand-title">M7+ 地震マップ</h1>
+        <p class="brand-sub" id="brandSub">599年〜2026年の大地震</p>
+      </div>
+    </div>
+    <button class="install-pill" id="installBtn" type="button" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M12 8.5v7M8.5 12h7"/></svg>
+      <span>ホームに追加</span>
+    </button>
+  </header>
+
+  <main class="views" id="views">
+    <!-- 地図 -->
+    <section class="view view-map" id="view-map" data-view="map" aria-label="地図">
+      <div class="map-stage" id="mapStage">
+        <svg class="map-svg" id="mapSvg" role="img" aria-label="日本地図。都道府県の色は選んだ指標の回数、円は震央（大きさはマグニチュード）"></svg>
+        <div class="map-top">
+          <div class="chip-row" role="toolbar" aria-label="表示の切り替え">
+            <div class="seg" role="radiogroup" aria-label="都道府県の塗り分け" data-bind="fill">
+              <button type="button" data-val="epi" role="radio">震央の数</button>
+              <button type="button" data-val="near" role="radio">影響圏</button>
+            </div>
+            <div class="seg" role="radiogroup" aria-label="マグニチュードの下限" data-bind="minM">
+              <button type="button" data-val="7" role="radio">M7+</button>
+              <button type="button" data-val="7.5" role="radio">7.5+</button>
+              <button type="button" data-val="8" role="radio">8+</button>
+            </div>
+          </div>
+          <div class="chip-row region-row" role="toolbar" aria-label="地域へ移動" id="regionRow"></div>
+        </div>
+        <div class="map-zoom">
+          <button type="button" id="platesToggle" class="is-toggle" aria-pressed="true" aria-label="プレート境界と海溝名を表示">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 16c3-1 4-5 7-6s5 2 8 0 3-4 3-4" stroke-dasharray="3.2 2.6"/><path d="M5 20l2-3M10 18l1.6-3.2M15 17l1.2-3.4"/></svg>
+          </button>
+          <button type="button" id="zoomIn" aria-label="拡大">＋</button>
+          <button type="button" id="zoomOut" aria-label="縮小">－</button>
+        </div>
+        <div class="map-legend" id="mapLegend"></div>
+        <div class="time-panel">
+          <div class="time-head">
+            <button type="button" class="play-btn" id="playBtn" aria-label="年代を再生">
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="ic-play"><path d="M8 5.5v13l11-6.5z"/></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="ic-pause"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+            </button>
+            <div class="time-read">
+              <span class="time-year" id="timeYear">2026</span><span class="time-unit">年まで</span>
+            </div>
+            <div class="time-count"><b id="timeCount">0</b><span>件</span></div>
+          </div>
+          <input type="range" class="time-range" id="timeRange" min="0" max="1000" value="1000" step="1" aria-label="表示する年（この年までの地震を表示）">
+          <div class="time-scale" aria-hidden="true"><span>599</span><span>1600</span><span>1800</span><span>1900</span><span>2026</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ランキング -->
+    <section class="view view-rank" id="view-rank" data-view="rank" aria-label="都道府県ランキング" hidden>
+      <div class="page">
+        <div class="page-head">
+          <h2>都道府県ランキング</h2>
+          <p class="page-lead" id="rankLead"></p>
+        </div>
+        <div class="controls">
+          <div class="seg seg-wide" role="radiogroup" aria-label="ランキングの指標" data-bind="rankMetric">
+            <button type="button" data-val="epi" role="radio">震央の数</button>
+            <button type="button" data-val="near" role="radio">影響圏の回数</button>
+            <button type="button" data-val="maxm" role="radio">最大M</button>
+          </div>
+          <div class="seg seg-wide" role="radiogroup" aria-label="期間" data-bind="period">
+            <button type="button" data-val="599" role="radio">全期間</button>
+            <button type="button" data-val="1868" role="radio">1868年〜</button>
+            <button type="button" data-val="1919" role="radio">1919年〜</button>
+            <button type="button" data-val="2000" role="radio">2000年〜</button>
+          </div>
+        </div>
+        <div class="podium" id="podium"></div>
+        <ol class="rank-list" id="rankList"></ol>
+        <p class="note" id="rankNote"></p>
+      </div>
+    </section>
+
+    <!-- 見通し -->
+    <section class="view view-outlook" id="view-outlook" data-view="outlook" aria-label="都道府県別の見通し" hidden>
+      <div class="page">
+        <div class="page-head">
+          <h2>次のM7以上の見通し</h2>
+          <p class="page-lead">地震本部（地震調査委員会）の長期評価と、このアプリの記録の統計から、都道府県ごとにまとめました。予知ではなく、確率と目安です。</p>
+        </div>
+        <div class="pref-picker" id="prefPicker"></div>
+        <div id="outlookDetail"></div>
+        <h3 class="sub-head">全国の一覧</h3>
+        <p class="note">都道府県ごとの「次のM7以上の目安」と、その根拠にした長期評価（30年以内の確率）。県名を押すと詳しく見られます。</p>
+        <ol class="outlook-list" id="outlookList"></ol>
+      </div>
+    </section>
+
+    <!-- 年表 -->
+    <section class="view view-list" id="view-list" data-view="list" aria-label="地震の年表" hidden>
+      <div class="page">
+        <div class="page-head">
+          <h2>年表</h2>
+          <p class="page-lead" id="listLead"></p>
+        </div>
+        <div class="chart-card">
+          <svg class="tl-chart" id="tlChart" role="img" aria-label="年とマグニチュードの散布図"></svg>
+        </div>
+        <div class="controls list-controls">
+          <label class="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+            <input type="search" id="listSearch" placeholder="地名・地震名で探す" autocomplete="off">
+          </label>
+          <div class="list-filters">
+            <div class="seg" role="radiogroup" aria-label="並べ替え" data-bind="listSort">
+              <button type="button" data-val="new" role="radio">新しい順</button>
+              <button type="button" data-val="old" role="radio">古い順</button>
+              <button type="button" data-val="big" role="radio">規模順</button>
+            </div>
+            <select id="listPref" aria-label="都道府県で絞り込み"></select>
+          </div>
+        </div>
+        <div class="quake-list" id="quakeList"></div>
+      </div>
+    </section>
+
+    <!-- 情報 -->
+    <section class="view view-info" id="view-info" data-view="info" aria-label="情報と設定" hidden>
+      <div class="page">
+        <div class="install-card" id="installCard">
+          <img src="icons/icon.svg" alt="" width="64" height="64">
+          <div>
+            <h2>ホーム画面に追加</h2>
+            <p id="installCardText">アイコンからすぐ開けて、電波がなくても見られます。</p>
+          </div>
+          <button type="button" class="btn-primary" id="installBtn2">追加する</button>
+        </div>
+
+        <h3 class="sub-head">テーマカラー</h3>
+        <div class="palette-grid" id="paletteGrid" role="radiogroup" aria-label="テーマカラー"></div>
+        <div class="seg seg-wide" role="radiogroup" aria-label="表示モード" data-bind="mode">
+          <button type="button" data-val="auto" role="radio">自動</button>
+          <button type="button" data-val="light" role="radio">ライト</button>
+          <button type="button" data-val="dark" role="radio">ダーク</button>
+        </div>
+
+        <h3 class="sub-head">収録データ</h3>
+        <div class="facts" id="dataFacts"></div>
+
+        <h3 class="sub-head">数え方</h3>
+        <dl class="defs">
+          <dt>日本の地震とみなす範囲</dt>
+          <dd>震央が日本の陸地（北方領土・竹島・沖ノ鳥島を含む）から200海里（約370km）以内で、気象庁の震央地名が国外（台湾付近・千島列島・サハリンなど）でないもの。</dd>
+          <dt>震央の数</dt>
+          <dd>震央がある都道府県に1回。海の地震は、震央にいちばん近い陸地の都道府県に数えます（気象庁の震央地名の県と異なることがあります）。</dd>
+          <dt>影響圏の回数</dt>
+          <dd>1919年以降は、震度5弱以上（1996年までの旧震度階では震度5以上）を観測した都道府県すべてに1回。1918年以前は観測がないため、震央から「100km＋推定した断層の長さの半分」以内に陸地がある都道府県に1回と推定します。断層の長さは宇津・関の式 log L = 0.5M − 1.8 で見積もり（M7で約50km、M8で約160km、M9で約500km）、推定に使う半径はM7で約125km、M8で約180km、M9で約350kmです。</dd>
+          <dt>マグニチュード</dt>
+          <dd>1919年以降は気象庁の値（2011年東北地方太平洋沖地震のM9.0はモーメントマグニチュード）。それより前は史料に残る被害の広がりから推定した値で、計器で観測した値より不確かです。</dd>
+          <dt>除外した記録</dt>
+          <dd>宇津カタログで実在が疑わしい（?）・別行の重複（+）とされた9件。気象庁データベースの1955年5月30日21時33分 硫黄島近海M7.5は、2分前のM7.2と同じ地震の重複の可能性が高いため除きました。</dd>
+          <dt>記録のかたより</dt>
+          <dd>古い時代ほど、記録は都（奈良・京都）や江戸の周辺に偏ります。北海道や沖縄は近世以前の記録がほとんどありません。全期間のランキングは「記録が残っている回数」として見てください。</dd>
+        </dl>
+
+        <h3 class="sub-head">見通しの出し方</h3>
+        <dl class="defs">
+          <dt>使う評価</dt>
+          <dd>地震本部（地震調査委員会）の長期評価。算定基準日は2026年1月1日で、近畿の活断層は2026年8月28日公表の改訂値です。海溝型・海域活断層・主要活断層帯はM7以上（想定Mの上限が7.0以上）、地域評価はM6.8以上の確率です。</dd>
+          <dt>都道府県との関係づけ</dt>
+          <dd>評価の対象領域に面する、または含まれる都道府県。南海トラフの地震は、評価の対象領域（駿河湾〜日向灘）に面する9県（静岡・愛知・三重・和歌山・徳島・高知・愛媛・大分・宮崎）では「県内・近海の評価」として扱い、それ以外で内閣府の「南海トラフ地震防災対策推進地域」に市町村が含まれる都府県では、別の枠に示します。</dd>
+          <dt>見出しにする評価</dt>
+          <dd>県内・近海のM7以上の評価（海溝型・海域活断層・主要活断層帯）のうち、30年以内の確率の上限がいちばん高いもの（同じなら下限、想定Mの大きいもの）。地域評価（M6.8以上）は別の枠に示します。</dd>
+          <dt>次の目安</dt>
+          <dd>海溝型は、地震本部が公表している10・20・30・40・50年以内の確率から、確率が50%を超える時期の範囲を読み取ります（確率の上限で見て50%を超える直前の期間〜下限で見ても50%を超える期間）。活断層・海域活断層・地域評価は、30年以内の確率だけを示し、年数には置き換えていません。</dd>
+          <dt>ランクの色</dt>
+          <dd>赤＝高い（海溝型Ⅲ・活断層S）、黄＝やや高い（Ⅱ・A）、青＝Ⅰランク（3%未満）・Zランク（0.1%未満）、灰＝不明（X）・ランクなし（地域評価など）。地震本部は、確率が低くても大きな地震が起きないわけではないとしています。</dd>
+          <dt>注意</dt>
+          <dd>目安は確率の読み取りで、地震の予知ではありません。評価の公表後や算定基準日の後に起きた地震（2021・2022年の福島県沖、2024年の日向灘、2025年の青森県東方沖、2026年の三陸沖・岩手県沖・令和8年熊本地震など）は、確率の計算に入っていません。</dd>
+        </dl>
+
+        <h3 class="sub-head">出典</h3>
+        <ul class="sources" id="sourceList"></ul>
+
+        <div class="disclaimer">
+          <h3>ご注意</h3>
+          <p>このアプリの「見通し」は、公的な長期評価と過去の記録から計算した確率・目安で、地震の予知ではありません。防災の判断は、気象庁・自治体の情報とハザードマップを確認してください。数値は出典の公表時点のもので、改訂されることがあります。</p>
+          <p class="version" id="versionText"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar" aria-label="画面の切り替え" role="tablist">
+    <button type="button" class="tab" role="tab" data-tab="map" style="--tab:var(--a1);--tab-on:var(--on-a1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8z"/><path d="M9 4.5v12.7M15 6.8v12.7"/></svg><span>地図</span></button>
+    <button type="button" class="tab" role="tab" data-tab="rank" style="--tab:var(--a2);--tab-on:var(--on-a2)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V11h4.5v9M9.75 20V5h4.5v15M15.5 20v-6.5H20V20"/></svg><span>ランキング</span></button>
+    <button type="button" class="tab" role="tab" data-tab="outlook" style="--tab:var(--a5);--tab-on:var(--on-a5)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2.2"/></svg><span>見通し</span></button>
+    <button type="button" class="tab" role="tab" data-tab="list" style="--tab:var(--a4);--tab-on:var(--on-a4)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h3.2l2-5 3.3 10 2.8-7.5 1.7 2.5H21"/></svg><span>年表</span></button>
+    <button type="button" class="tab" role="tab" data-tab="info" style="--tab:var(--a3);--tab-on:var(--on-a3)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.2"/></svg><span>情報</span></button>
+  </nav>
+</div>
+
+<div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+  <div class="sheet-grip" id="sheetGrip"><span></span></div>
+  <button type="button" class="sheet-close" id="sheetClose" aria-label="閉じる"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <div class="sheet-body" id="sheetBody"></div>
+</section>
+
+<section class="modal" id="installModal" role="dialog" aria-modal="true" aria-labelledby="installTitle" hidden>
+  <div class="modal-card">
+    <button type="button" class="sheet-close" id="installClose" aria-label="閉じる"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <img src="icons/icon.svg" alt="" width="72" height="72" class="modal-icon">
+    <h2 id="installTitle">ホーム画面に追加</h2>
+    <div id="installSteps"></div>
+  </div>
+</section>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<!--SCRIPTS-START-->
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/topojson-client.min.js"></script>
+<script src="data/prefs.js"></script>
+<script src="data/quakes.js"></script>
+<script src="data/japan.js"></script>
+<script src="data/plates.js"></script>
+<script src="data/forecast.js"></script>
+<script src="app.js"></script>
+<!--SCRIPTS-END-->
+</body>
+</html>
